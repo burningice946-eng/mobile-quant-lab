@@ -3,10 +3,9 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 import requests
-from streamlit_autorefresh import st_autorefresh
 
-# Run an auto-refresh timer every 60 seconds (60000 milliseconds)
-count = st_autorefresh(interval=60000, limit=None, key="quant_counter")
+
+
 
 st.set_page_config(
     page_title="Quant Lab Mobile Dashboard", page_icon="📈", layout="centered"
