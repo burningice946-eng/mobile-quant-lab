@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import yfinance as yf
+import requests
+
 
 st.set_page_config(
     page_title="Quant Lab Mobile Dashboard", page_icon="📈", layout="centered"
@@ -125,3 +127,28 @@ st.subheader("Cumulative Strategy Equity Curve (With Risk Controls)")
 cum_equity = (1 + strat_returns.fillna(0)).cumprod()
 st.line_chart(cum_equity)
       
+# Paper Trading Execution Section
+try:
+    API_KEY = st.secrets["alpaca"]["api_key"]
+    SECRET_KEY = st.secrets["alpaca"]["secret_key"]
+    BASE_URL = st.secrets["alpaca"]["base_url"]
+except Exception:
+    API_KEY, SECRET_Key, BASE_URL = None, None, None
+
+st.sidebar.header("Paper Trading Execution")
+
+if API_KEY and SECRET_KEY:
+    headers = {
+        "APCA-API-KEY-ID": API_KEY,
+        "APCA-API-SECRET-KEY": SECRET_KEY
+    }
+    response = requests.get(f"{BASE_URL}/v2/account", headers=headers)
+    if response.status_code == 200:
+        account_info = response.json()
+        st.sidebar.success("Connected to Alpaca Paper Account!")
+        st.sidebar.metric("Buying Power", f"${float(account_info['buying_power']):,.2f}")
+        st.sidebar.metric("Portfolio Value", f"${float(account_info['portfolio_value']):,.2f}")
+    else:
+        st.sidebar.error("Failed to connect to Alpaca API.")
+else:
+    st.sidebar.warning("Please configure your Alpaca secrets in Streamlit Cloud.")
