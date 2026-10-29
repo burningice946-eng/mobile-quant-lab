@@ -3,7 +3,10 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 import requests
+from streamlit_autorefresh import st_autorefresh
 
+# Run an auto-refresh timer every 60 seconds (60000 milliseconds)
+count = st_autorefresh(interval=60000, limit=None, key="quant_counter")
 
 st.set_page_config(
     page_title="Quant Lab Mobile Dashboard", page_icon="📈", layout="centered"
@@ -157,18 +160,22 @@ else:
     st.sidebar.warning("Please configure your Alpaca secrets in Streamlit Cloud.")
 # Trade Execution Controls
 st.sidebar.subheader("Order Execution")
-if st.sidebar.button("Execute Signal on Alpaca"):
+
+# Auto-execute checkbox
+auto_execute = st.sidebar.checkbox("Enable Auto-Execution on Refresh", value=False)
+
+# Manual button trigger
+trigger_trade = st.sidebar.button("Execute Signal Now")
+
+if trigger_trade or auto_execute:
     if API_KEY and SECRET_KEY:
-        # Determine latest signal
         latest_signal = df["Signal"].iloc[-1]
         order_side = "buy" if latest_signal == 1 else "sell"
-        
-        # Format ticker for Alpaca (e.g., BTC-USD -> BTC/USD)
         alpaca_symbol = ticker.replace("-", "/") if "-USD" in ticker else ticker
         
         payload = {
             "symbol": alpaca_symbol,
-            "qty": 0.01 if "USD" in ticker else 1,  # Fractional for crypto, whole shares for stocks
+            "qty": 0.01 if "USD" in ticker else 1,
             "side": order_side,
             "type": "market",
             "time_in_force": "gtc"
@@ -176,6 +183,11 @@ if st.sidebar.button("Execute Signal on Alpaca"):
         
         trade_resp = requests.post(f"{BASE_URL}/v2/orders", json=payload, headers=headers)
         if trade_resp.status_code == 200:
-            st.sidebar.success(f"Submitted {order_side.upper()} order for {alpaca_symbol}!")
+            st.sidebar.success(f"Executed {order_side.upper()} order for {alpaca_symbol}!")
         else:
-            st.sidebar.error(f"Order Failed: {trade_resp.json().get('message', 'Unknown error')}")
+            err_msg = trade_resp.json().get('message', 'Unknown error')
+            if "insufficient" in err_msg.lower() or "position" in err_msg.lower():
+                st.sidebar.info(f"Note: {err_msg}")
+            else:
+                st.sidebar.error(f"Order Failed: {err_msg}")
+                
